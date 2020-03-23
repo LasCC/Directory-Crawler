@@ -1,5 +1,7 @@
 import requests
 import argparse
+import re
+import urlparse
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -12,18 +14,22 @@ def get_arguments():
         parser.error("[!] Please add a wordlist to proceed, --help for more informations.")
     return options
 
-def req(url):
-    try:
-        return requests.get("http://" + url)
-    except requests.exceptions.ConnectionError:
-        pass
+def extract_all_href(url):
+    res = requests.get(target_url)
+    return re.findall('(?:href=")(.*?)"',res.content)
+
+def crawler(url):
+    hrefs = extract_all_href(url)
+    for l in hrefs:
+        l = urlparse.urljoin(url, l)
+        if "#" in l:
+            l = l.split("#")[0]
+        if target_url in l and l not in target_links:
+            target_links.append(l)
+            print("[+] Link found ! > " + l)
+            crawler(l)
 
 options = get_arguments()
-target_url = str(options.url)
-with open(options.wordlist, "r") as wordlists:
-    for l in wordlists:
-        w = l.strip()
-        url = target_url + "/" + w
-        res = req(url)
-        if res:
-            print("[+] Directory found ! > " + url)
+target_url = options.url
+target_links = []
+crawler(target_url)
